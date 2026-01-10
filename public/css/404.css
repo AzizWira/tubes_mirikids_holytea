@@ -1,0 +1,183 @@
+:root {
+    --green: #21963B;
+    --bg: #ffffff;
+    --muted: rgba(0, 0, 0, .65);
+    --soft: #f3f3f3;
+    --card: #ffffff;
+    --shadow: 0px 0px 30px rgba(0, 0, 0, .12);
+    --radius: 20px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: #111;
+}
+
+.nf-wrap {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+}
+
+.nf-card {
+    width: min(720px, 100%);
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(0, 0, 0, .06);
+    padding: 28px 26px;
+    position: relative;
+    z-index: 2;
+}
+
+.nf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(33, 150, 59, .12);
+    color: var(--green);
+    font-weight: 900;
+    letter-spacing: .5px;
+    margin-bottom: 14px;
+}
+
+.nf-title {
+    margin: 0 0 8px 0;
+    font-size: 34px;
+    font-weight: 900;
+    color: #111;
+}
+
+.nf-desc {
+    margin: 0 0 18px 0;
+    color: var(--muted);
+    line-height: 1.6;
+    font-weight: 600;
+}
+
+.nf-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.nf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+    border: 2px solid rgba(0, 0, 0, .25);
+    color: #222;
+    background: #fff;
+    cursor: pointer;
+    transition: .15s ease;
+    flex: 1 1 160px;
+}
+
+.nf-btn:hover {
+    transform: translateY(-1px);
+}
+
+.nf-btn.primary {
+    border-color: var(--green);
+    background: var(--green);
+    color: #fff;
+}
+
+.nf-btn.primary:hover {
+    filter: brightness(.95);
+}
+
+.nf-btn.ghost {
+    border-color: rgba(0, 0, 0, .15);
+    background: #fff;
+}
+
+.nf-help {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(0, 0, 0, .12);
+    color: rgba(0, 0, 0, .55);
+    font-weight: 700;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.nf-help code {
+    background: rgba(0, 0, 0, .06);
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-weight: 800;
+    color: #111;
+}
+
+/* background decoration */
+.nf-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.blob {
+    position: absolute;
+    width: 420px;
+    height: 420px;
+    border-radius: 999px;
+    filter: blur(20px);
+    opacity: .35;
+}
+
+.b1 {
+    left: -140px;
+    top: -140px;
+    background: rgba(33, 150, 59, .45);
+}
+
+.b2 {
+    right: -140px;
+    bottom: -140px;
+    background: rgba(238, 78, 46, .35);
+}
+
+.grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(rgba(0, 0, 0, .08) 1px, transparent 1px);
+    background-size: 18px 18px;
+    opacity: .25;
+}
+
+@media (max-width:520px) {
+    .nf-card {
+        padding: 22px 18px;
+    }
+
+    .nf-title {
+        font-size: 28px;
+    }
+}
