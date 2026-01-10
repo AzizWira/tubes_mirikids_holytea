@@ -14,31 +14,36 @@ Route::view('/', 'user.index')->name('user.home');
 Route::view('/menu', 'user.menu')->name('user.menu');
 
 Route::get('/detail/{slug}', function (string $slug) {
-    try {
-        $exists = DB::table('products')->where('slug', $slug)->exists();
-        abort_if(!$exists, 404);
-    } catch (\Throwable $e) {
-        abort(404);
-    }
+    $exists = DB::table('products')
+        ->where('slug', $slug)
+        ->where('is_active', 1)
+        ->exists();
+
+    abort_if(!$exists, 404);
 
     return view('user.detail', compact('slug'));
 })->name('user.detail');
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN PAGES
+| ADMIN PAGES (API-FIRST)
 |--------------------------------------------------------------------------
 */
-Route::view('/login', 'admin.login')->name('login');
+Route::view('/login', 'admin.login')
+    ->name('login')
+    ->middleware('guest'); // biar kalau sudah "session login" (kalau ada) gak balik lagi
 
 Route::prefix('admin')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('admin.dashboard');
 
+    // Admin1 pages (proteksi via JS guard di admin.layout)
     Route::view('/products', 'admin.products.index')->name('admin.products.index');
     Route::view('/categories', 'admin.categories.index')->name('admin.categories.index');
 
+    // Admin2 pages (proteksi via JS guard di admin.layout)
     Route::view('/testimonials', 'admin.testimonials.index')->name('admin.testimonials.index');
-    Route::view('/settings', 'admin.settings.index')->name('admin.settings.index');
+    Route::view('/settings', 'admin.settings.index')->name('admin.settings');
 });
 
 /*

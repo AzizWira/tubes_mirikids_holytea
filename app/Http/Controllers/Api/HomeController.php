@@ -10,81 +10,83 @@ class HomeController extends Controller
 {
     public function index()
     {
-        // total produk aktif
         $totalProducts = DB::table('products')
             ->where('is_active', 1)
             ->count();
 
-        // banner
-        $banners = DB::table('news_banners')
-            ->select('id', 'title', 'image_url', 'link_url', 'sort_order')
+        $totalCategories = DB::table('categories')
+            ->where('is_active', 1)
+            ->where('slug', '!=', 'all')
+            ->count();
+
+        $news = DB::table('news_banners')
             ->where('is_active', 1)
             ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+            ->get(['id', 'title', 'image_url', 'link_url', 'sort_order']);
 
-        // best sellers (left: max 1, right: max 6)
-        $bestSellers = DB::table('best_sellers as bs')
-            ->leftJoin('products as p', 'p.id', '=', 'bs.product_id')
-            ->select(
-                'bs.id',
-                'bs.position',
-                'bs.image_url',
-                'bs.title',
-                'bs.sort_order',
-                'p.id as product_id',
-                'p.name as product_name',
-                'p.slug as product_slug',
-                'p.price as product_price',
-                'p.image_url as product_image_url'
-            )
-            ->where('bs.is_active', 1)
-            ->orderByRaw("CASE WHEN bs.position = 'left' THEN 0 ELSE 1 END")
-            ->orderBy('bs.sort_order')
-            ->orderBy('bs.id')
-            ->get();
+        $bestLeft = DB::table('best_sellers')
+            ->where('is_active', 1)
+            ->where('position', 'left')
+            ->orderBy('sort_order')
+            ->limit(1)
+            ->get(['id', 'title', 'image_url', 'product_id']);
 
-        $bestSellerLeft = $bestSellers->firstWhere('position', 'left');
-        $bestSellerRight = $bestSellers->where('position', 'right')->values();
+        $bestRight = DB::table('best_sellers')
+            ->where('is_active', 1)
+            ->where('position', 'right')
+            ->orderBy('sort_order')
+            ->limit(6)
+            ->get(['id', 'title', 'image_url', 'product_id', 'sort_order']);
 
-        // settings (key/value)
-        $settingsRows = DB::table('site_settings')->select('key', 'value')->get();
-        $settings = [];
-        foreach ($settingsRows as $row) {
-            $settings[$row->key] = $row->value;
-        }
+        $latestProducts = DB::table('products')
+            ->where('is_active', 1)
+            ->orderByDesc('created_at')
+            ->limit(6)
+            ->get(['id', 'name', 'slug', 'price', 'image_url', 'category_id']);
 
-        // maps_url -> embed url (kalau user tempel alamat/link biasa)
-        if (!empty($settings['maps_url'])) {
-            $settings['maps_embed_url'] = $this->toMapsEmbedUrl($settings['maps_url']);
-        }
+        $settings = DB::table('site_settings')->pluck('value', 'key');
+
+        $mapsUrl = $settings['maps_url'] ?? null;
+        $mapsEmbedUrl = $this->toMapsEmbedUrl($mapsUrl);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'stats' => [
-                    'total_products' => $totalProducts,
+                'counts' => [
+                    'varian_menu' => $totalProducts,
+                    'varian_rasa' => $totalCategories,
                 ],
-                'banners' => $banners,
+                'news' => $news,
                 'best_seller' => [
-                    'left' => $bestSellerLeft,
-                    'right' => $bestSellerRight,
+                    'left' => $bestLeft,
+                    'right' => $bestRight,
                 ],
-                'settings' => $settings,
+                'latest_products' => $latestProducts,
+                'site' => [
+                    'maps_url' => $mapsUrl,
+                    'maps_embed_url' => $mapsEmbedUrl,
+                    'address' => $settings['address'] ?? null,
+                    'open_days' => $settings['open_days'] ?? null,
+                    'open_hours' => $settings['open_hours'] ?? null,
+                    'friday_hours' => $settings['friday_hours'] ?? null,
+                    'phone' => $settings['phone'] ?? null,
+                    'email' => $settings['email'] ?? null,
+                    'instagram_url' => $settings['instagram_url'] ?? null,
+                ],
             ],
         ]);
     }
 
     private function toMapsEmbedUrl(?string $url): ?string
     {
-        if (!$url) return null;
+        if (!$url)
+            return null;
 
         // kalau sudah embed, pakai langsung
         if (Str::contains($url, 'google.com/maps/embed') || Str::contains($url, 'output=embed')) {
             return $url;
         }
 
-        // kalau bukan embed, ubah jadi query embed
         return 'https://www.google.com/maps?q=' . urlencode($url) . '&output=embed';
     }
 }

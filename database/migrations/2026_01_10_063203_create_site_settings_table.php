@@ -5,24 +5,20 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('users', function ($table) {
+        Schema::create('site_settings', function (Blueprint $table) {
             $table->id();
-            $table->string('username')->unique();
-            $table->string('password');
+
+            $table->string('key')->unique();   // contoh: "maps_url", "address", "open_hours"
+            $table->text('value')->nullable(); // simpan teks panjang
+
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('site_settings');
     }
 };

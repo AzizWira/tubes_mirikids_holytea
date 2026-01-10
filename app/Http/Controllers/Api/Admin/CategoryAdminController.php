@@ -14,8 +14,9 @@ class CategoryAdminController extends Controller
         $items = DB::table('categories')
             ->where('slug', '!=', 'all')
             ->orderBy('sort_order')
-            ->orderBy('name')
+            ->orderBy('id')
             ->get();
+
 
         return response()->json([
             'success' => true,
@@ -26,67 +27,64 @@ class CategoryAdminController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'slug' => ['required', 'string', 'max:120', 'unique:categories,slug'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
+            'name_short' => ['required', 'string', 'max:80'],
+            'slug' => ['required', 'string', 'max:80', Rule::unique('categories', 'slug')],
+            'series_title' => ['nullable', 'string', 'max:150'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
+
+        $now = now();
 
         $id = DB::table('categories')->insertGetId([
-            'name' => $data['name'],
+            'name_short' => $data['name_short'],
             'slug' => $data['slug'],
-            'sort_order' => $data['sort_order'] ?? 0,
-            'is_active' => $data['is_active'] ?? 1,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'series_title' => $data['series_title'] ?? null,
+            'sort_order' => $data['sort_order'] ?? 1,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
-        $row = DB::table('categories')->where('id', $id)->first();
+        $cat = DB::table('categories')->where('id', $id)->first();
 
         return response()->json([
             'success' => true,
-            'data' => $row,
+            'data' => $cat,
         ], 201);
     }
 
     public function show(string $id)
     {
-        $row = DB::table('categories')->where('id', $id)->first();
+        $cat = DB::table('categories')->where('id', $id)->first();
 
-        if (!$row) {
-            return response()->json(['success' => false, 'message' => 'Category not found'], 404);
+        if (!$cat) {
+            return response()->json(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
         }
 
         return response()->json([
             'success' => true,
-            'data' => $row,
+            'data' => $cat,
         ]);
     }
 
     public function update(Request $request, string $id)
     {
-        $row = DB::table('categories')->where('id', $id)->first();
-        if (!$row) {
-            return response()->json(['success' => false, 'message' => 'Category not found'], 404);
+        $cat = DB::table('categories')->where('id', $id)->first();
+        if (!$cat) {
+            return response()->json(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
         }
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'slug' => [
-                'required',
-                'string',
-                'max:120',
-                Rule::unique('categories', 'slug')->ignore($id),
-            ],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
+            'name_short' => ['required', 'string', 'max:80'],
+            'slug' => ['required', 'string', 'max:80', Rule::unique('categories', 'slug')->ignore($id)],
+            'series_title' => ['nullable', 'string', 'max:150'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
         DB::table('categories')->where('id', $id)->update([
-            'name' => $data['name'],
+            'name_short' => $data['name_short'],
             'slug' => $data['slug'],
-            'sort_order' => $data['sort_order'] ?? 0,
-            'is_active' => $data['is_active'] ?? 1,
+            'series_title' => $data['series_title'] ?? null,
+            'sort_order' => $data['sort_order'] ?? 1,
             'updated_at' => now(),
         ]);
 
@@ -100,16 +98,13 @@ class CategoryAdminController extends Controller
 
     public function destroy(string $id)
     {
-        $row = DB::table('categories')->where('id', $id)->first();
-        if (!$row) {
-            return response()->json(['success' => false, 'message' => 'Category not found'], 404);
+        $exists = DB::table('categories')->where('id', $id)->exists();
+        if (!$exists) {
+            return response()->json(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
         }
 
         DB::table('categories')->where('id', $id)->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Category deleted',
-        ]);
+        return response()->json(['success' => true]);
     }
 }

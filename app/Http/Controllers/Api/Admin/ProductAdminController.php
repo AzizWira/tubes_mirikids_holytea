@@ -18,248 +18,353 @@ class ProductAdminController extends Controller
                 'sugar_g' => null,
                 'protein_g' => null,
                 'fat_g' => null,
-                'sodium_mg' => null,
+                'note' => null,
             ];
         }
 
-        $arr = json_decode($nutritionJson, true);
-        if (!is_array($arr)) {
+        $decoded = json_decode($nutritionJson, true);
+        if (!is_array($decoded)) {
             return [
                 'calories_kcal' => null,
                 'sugar_g' => null,
                 'protein_g' => null,
                 'fat_g' => null,
-                'sodium_mg' => null,
+                'note' => null,
             ];
         }
 
-        return array_merge([
-            'calories_kcal' => null,
-            'sugar_g' => null,
-            'protein_g' => null,
-            'fat_g' => null,
-            'sodium_mg' => null,
-        ], $arr);
-    }
-
-    private function mapProductRow($row): array
-    {
-        $images = [];
-        if (!empty($row->images_json)) {
-            $decoded = json_decode($row->images_json, true);
-            if (is_array($decoded)) {
-                $images = $decoded;
-            }
-        }
-
         return [
-            'id' => $row->id,
-            'category_id' => $row->category_id,
-            'name' => $row->name,
-            'slug' => $row->slug,
-            'description' => $row->description,
-            'price' => $row->price,
-            'is_active' => (int) $row->is_active,
-            'is_best_seller' => (int) $row->is_best_seller,
-            'sort_order' => $row->sort_order,
-            'images' => $images,
-            'nutrition' => $this->decodeNutrition($row->nutrition_json ?? null),
-            'created_at' => $row->created_at,
-            'updated_at' => $row->updated_at,
+            'calories_kcal' => $decoded['calories_kcal'] ?? null,
+            'sugar_g' => $decoded['sugar_g'] ?? null,
+            'protein_g' => $decoded['protein_g'] ?? null,
+            'fat_g' => $decoded['fat_g'] ?? null,
+            'note' => $decoded['note'] ?? null,
         ];
     }
 
-    public function index()
+    private function withComputedFields(object $row): array
     {
-        $items = DB::table('products as p')
-            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
-            ->select(
-                'p.*',
-                'c.name as category_name'
-            )
-            ->orderByDesc('p.id')
+        $arr = (array) $row;
+        $arr['nutrition'] = $this->decodeNutrition($arr['nutrition_json'] ?? null);
+        return $arr;
+    }
+
+    private function fetchOptions(int $productId): array
+    {
+        $rows = DB::table('product_options')
+            ->select(['id', 'type', 'label', 'sort_order'])
+            ->where('product_id', $productId)
+            ->where('is_active', 1)
+            ->orderBy('type')
+            ->orderBy('sort_order')
             ->get();
 
-        $data = $items->map(function ($row) {
-            $mapped = $this->mapProductRow($row);
-            $mapped['category_name'] = $row->category_name;
-            return $mapped;
+        $options = ['size' => [], 'ice' => [], 'sugar' => []];
+
+        foreach ($rows as $r) {
+            if (isset($options[$r->type])) {
+                $options[$r->type][] = $r;
+            }
+        }
+
+        return $options;
+    }
+
+    private function syncOptions(int $productId, array $options): void
+    {
+        $types = ['size', 'ice', 'sugar'];
+
+        foreach ($types as $type) {
+            $items = $options[$type] ?? [];
+            $keepIds = [];
+
+            foreach ($items as $i => $item) {
+                $payload = [
+                    'product_id' => $productId,
+                    'type' => $type,
+                    'label' => $item['label'],
+                    'sort_order' => $item['sort_order'] ?? ($i + 1),
+                    'is_active' => isset($item['is_active']) ? (int) $item['is_active'] : 1,
+                    'updated_at' => now(),
+                ];
+
+                if (!empty($item['id'])) {
+                    DB::table('product_options')
+                        ->where('id', (int) $item['id'])
+                        ->where('product_id', $productId)
+                        ->update($payload);
+
+                    $keepIds[] = (int) $item['id'];
+                } else {
+                    $payload['created_at'] = now();
+                    $newId = DB::table('product_options')->insertGetId($payload);
+                    $keepIds[] = $newId;
+                }
+            }
+
+            // nonaktifkan yang tidak ada di payload
+            DB::table('product_options')
+                ->where('product_id', $productId)
+                ->where('type', $type)
+                ->when(count($keepIds) > 0, fn($q) => $q->whereNotIn('id', $keepIds))
+                ->update(['is_active' => 0, 'updated_at' => now()]);
+        }
+    }
+
+    private function validateRules(?string $id = null): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:150'],
+            'slug' => [
+                'required',
+                'string',
+                'max:180',
+                $id
+                    ? Rule::unique('products', 'slug')->ignore($id)
+                    : Rule::unique('products', 'slug')
+            ],
+            'price' => ['required', 'integer', 'min:0'],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'image_url' => ['nullable', 'string', 'max:255'],
+            'short_description' => ['nullable', 'string'],
+            'is_active' => ['nullable', 'boolean'],
+
+            'gofood_url' => ['nullable', 'string', 'max:255'],
+            'grabfood_url' => ['nullable', 'string', 'max:255'],
+            'shopeefood_url' => ['nullable', 'string', 'max:255'],
+
+            'nutrition' => ['nullable', 'array'],
+            'nutrition.calories_kcal' => ['nullable', 'numeric'],
+            'nutrition.sugar_g' => ['nullable', 'numeric'],
+            'nutrition.protein_g' => ['nullable', 'numeric'],
+            'nutrition.fat_g' => ['nullable', 'numeric'],
+            'nutrition.note' => ['nullable', 'string', 'max:100'],
+
+            'options' => ['nullable', 'array'],
+            'options.size' => ['nullable', 'array'],
+            'options.ice' => ['nullable', 'array'],
+            'options.sugar' => ['nullable', 'array'],
+
+            'options.size.*.id' => ['nullable', 'integer'],
+            'options.size.*.label' => ['required', 'string', 'max:80'],
+            'options.size.*.sort_order' => ['nullable', 'integer', 'min:1'],
+            'options.size.*.is_active' => ['nullable', 'boolean'],
+
+            'options.ice.*.id' => ['nullable', 'integer'],
+            'options.ice.*.label' => ['required', 'string', 'max:80'],
+            'options.ice.*.sort_order' => ['nullable', 'integer', 'min:1'],
+            'options.ice.*.is_active' => ['nullable', 'boolean'],
+
+            'options.sugar.*.id' => ['nullable', 'integer'],
+            'options.sugar.*.label' => ['required', 'string', 'max:80'],
+            'options.sugar.*.sort_order' => ['nullable', 'integer', 'min:1'],
+            'options.sugar.*.is_active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $query = DB::table('products as p')
+            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
+            ->select([
+                'p.*',
+                'c.name_short as category_name',
+                'c.slug as category_slug',
+                'c.series_title as series_title',
+            ])
+            ->orderByDesc('p.id');
+
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('p.name', 'like', "%{$q}%")
+                    ->orWhere('p.slug', 'like', "%{$q}%");
+            });
+        }
+
+        $items = $query->paginate(10);
+
+        $items->getCollection()->transform(function ($row) {
+            $arr = (array) $row;
+            $arr['nutrition'] = $this->decodeNutrition($arr['nutrition_json'] ?? null);
+            return $arr;
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-        ]);
+        return response()->json(['success' => true, 'data' => $items]);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'category_id' => ['nullable', 'integer'],
-            'name' => ['required', 'string', 'max:200'],
-            'slug' => ['required', 'string', 'max:220', 'unique:products,slug'],
-            'description' => ['nullable', 'string'],
+        $data = $request->validate($this->validateRules(null));
+        $now = now();
 
-            'price' => ['required', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
-            'is_best_seller' => ['nullable', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-
-            // images = array of strings (storage path or url)
-            'images' => ['nullable', 'array'],
-            'images.*' => ['string', 'max:500'],
-
-            // nutrition
-            'nutrition' => ['nullable', 'array'],
-            'nutrition.calories_kcal' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.sugar_g' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.protein_g' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.fat_g' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.sodium_mg' => ['nullable', 'numeric', 'min:0'],
-        ]);
-
-        $nutritionJson = null;
-        if (!empty($data['nutrition']) && is_array($data['nutrition'])) {
-            $nutritionJson = json_encode($data['nutrition']);
-        }
-
-        $imagesJson = null;
-        if (!empty($data['images']) && is_array($data['images'])) {
-            $imagesJson = json_encode(array_values($data['images']));
-        }
+        $nutritionJson = isset($data['nutrition'])
+            ? json_encode([
+                'calories_kcal' => $data['nutrition']['calories_kcal'] ?? null,
+                'sugar_g' => $data['nutrition']['sugar_g'] ?? null,
+                'protein_g' => $data['nutrition']['protein_g'] ?? null,
+                'fat_g' => $data['nutrition']['fat_g'] ?? null,
+                'note' => $data['nutrition']['note'] ?? null,
+            ])
+            : null;
 
         $id = DB::table('products')->insertGetId([
-            'category_id' => $data['category_id'] ?? null,
             'name' => $data['name'],
             'slug' => $data['slug'],
-            'description' => $data['description'] ?? null,
             'price' => $data['price'],
+            'category_id' => $data['category_id'],
+            'image_url' => $data['image_url'] ?? null,
+            'short_description' => $data['short_description'] ?? null,
             'is_active' => $data['is_active'] ?? 1,
-            'is_best_seller' => $data['is_best_seller'] ?? 0,
-            'sort_order' => $data['sort_order'] ?? 0,
-            'images_json' => $imagesJson,
+
+            'gofood_url' => $data['gofood_url'] ?? null,
+            'grabfood_url' => $data['grabfood_url'] ?? null,
+            'shopeefood_url' => $data['shopeefood_url'] ?? null,
             'nutrition_json' => $nutritionJson,
-            'created_at' => now(),
-            'updated_at' => now(),
+
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
-        $row = DB::table('products')->where('id', $id)->first();
+        if (isset($data['options']) && is_array($data['options'])) {
+            $this->syncOptions((int) $id, $data['options']);
+        }
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->mapProductRow($row),
-        ], 201);
+        $product = DB::table('products as p')
+            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
+            ->select([
+                'p.*',
+                'c.name_short as category_name',
+                'c.slug as category_slug',
+                'c.series_title as series_title',
+            ])
+            ->where('p.id', $id)
+            ->first();
+
+        $arr = $product ? $this->withComputedFields($product) : [];
+        $arr['options'] = $this->fetchOptions((int) $id);
+
+        return response()->json(['success' => true, 'data' => $arr], 201);
     }
 
     public function show(string $id)
     {
-        $row = DB::table('products')->where('id', $id)->first();
+        $product = DB::table('products as p')
+            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
+            ->select([
+                'p.*',
+                'c.name_short as category_name',
+                'c.slug as category_slug',
+                'c.series_title as series_title',
+            ])
+            ->where('p.id', $id)
+            ->first();
 
-        if (!$row) {
-            return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+        if (!$product) {
+            return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->mapProductRow($row),
-        ]);
+        $arr = $this->withComputedFields($product);
+        $arr['options'] = $this->fetchOptions((int) $id);
+
+        return response()->json(['success' => true, 'data' => $arr]);
     }
 
     public function update(Request $request, string $id)
     {
-        $row = DB::table('products')->where('id', $id)->first();
-        if (!$row) {
-            return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+        // ✅ ambil data lama untuk hapus file lama
+        $old = DB::table('products')->select(['id', 'image_url'])->where('id', $id)->first();
+        if (!$old) {
+            return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
         }
 
-        $data = $request->validate([
-            'category_id' => ['nullable', 'integer'],
-            'name' => ['required', 'string', 'max:200'],
-            'slug' => [
-                'required',
-                'string',
-                'max:220',
-                Rule::unique('products', 'slug')->ignore($id),
-            ],
-            'description' => ['nullable', 'string'],
+        $data = $request->validate($this->validateRules($id));
 
-            'price' => ['required', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
-            'is_best_seller' => ['nullable', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-
-            'images' => ['nullable', 'array'],
-            'images.*' => ['string', 'max:500'],
-
-            'nutrition' => ['nullable', 'array'],
-            'nutrition.calories_kcal' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.sugar_g' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.protein_g' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.fat_g' => ['nullable', 'numeric', 'min:0'],
-            'nutrition.sodium_mg' => ['nullable', 'numeric', 'min:0'],
-        ]);
-
-        $nutritionJson = null;
-        if (!empty($data['nutrition']) && is_array($data['nutrition'])) {
-            $nutritionJson = json_encode($data['nutrition']);
-        }
-
-        $imagesJson = null;
-        if (!empty($data['images']) && is_array($data['images'])) {
-            $imagesJson = json_encode(array_values($data['images']));
-        }
+        $nutritionJson = isset($data['nutrition'])
+            ? json_encode([
+                'calories_kcal' => $data['nutrition']['calories_kcal'] ?? null,
+                'sugar_g' => $data['nutrition']['sugar_g'] ?? null,
+                'protein_g' => $data['nutrition']['protein_g'] ?? null,
+                'fat_g' => $data['nutrition']['fat_g'] ?? null,
+                'note' => $data['nutrition']['note'] ?? null,
+            ])
+            : null;
 
         DB::table('products')->where('id', $id)->update([
-            'category_id' => $data['category_id'] ?? null,
             'name' => $data['name'],
             'slug' => $data['slug'],
-            'description' => $data['description'] ?? null,
             'price' => $data['price'],
+            'category_id' => $data['category_id'],
+            'image_url' => $data['image_url'] ?? null,
+            'short_description' => $data['short_description'] ?? null,
             'is_active' => $data['is_active'] ?? 1,
-            'is_best_seller' => $data['is_best_seller'] ?? 0,
-            'sort_order' => $data['sort_order'] ?? 0,
-            'images_json' => $imagesJson,
+
+            'gofood_url' => $data['gofood_url'] ?? null,
+            'grabfood_url' => $data['grabfood_url'] ?? null,
+            'shopeefood_url' => $data['shopeefood_url'] ?? null,
             'nutrition_json' => $nutritionJson,
+
             'updated_at' => now(),
         ]);
 
-        $updated = DB::table('products')->where('id', $id)->first();
+        // ✅ hapus gambar lama jika berubah (hanya upload kita)
+        $oldImageUrl = $old->image_url;
+        $newImageUrl = $data['image_url'] ?? null;
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->mapProductRow($updated),
-        ]);
+        if ($oldImageUrl && $oldImageUrl !== $newImageUrl) {
+            if (str_starts_with($oldImageUrl, '/storage/products/')) {
+                $relativePath = str_replace('/storage/', '', $oldImageUrl); // products/xxx.webp
+                if (Storage::disk('public')->exists($relativePath)) {
+                    Storage::disk('public')->delete($relativePath);
+                }
+            }
+        }
+
+        if (isset($data['options']) && is_array($data['options'])) {
+            $this->syncOptions((int) $id, $data['options']);
+        }
+
+        $updated = DB::table('products as p')
+            ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
+            ->select([
+                'p.*',
+                'c.name_short as category_name',
+                'c.slug as category_slug',
+                'c.series_title as series_title',
+            ])
+            ->where('p.id', $id)
+            ->first();
+
+        $arr = $updated ? $this->withComputedFields($updated) : [];
+        $arr['options'] = $this->fetchOptions((int) $id);
+
+        return response()->json(['success' => true, 'data' => $arr]);
     }
 
     public function destroy(string $id)
     {
-        $row = DB::table('products')->where('id', $id)->first();
-        if (!$row) {
-            return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+        $product = DB::table('products')->select(['id', 'image_url'])->where('id', $id)->first();
+        if (!$product) {
+            return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan'], 404);
         }
 
-        // (opsional) hapus file images dari storage jika kamu simpan path storage
-        if (!empty($row->images_json)) {
-            $images = json_decode($row->images_json, true);
-            if (is_array($images)) {
-                foreach ($images as $img) {
-                    // kalau formatnya /storage/xxx -> convert ke disk path
-                    $path = $img;
-                    if (is_string($img) && str_starts_with($img, '/storage/')) {
-                        $path = str_replace('/storage/', '', $img);
-                    }
-                    if (is_string($path) && $path !== '') {
-                        Storage::disk('public')->delete($path);
-                    }
-                }
+        // ✅ hapus gambar (hanya upload kita)
+        if ($product->image_url && str_starts_with($product->image_url, '/storage/products/')) {
+            $relativePath = str_replace('/storage/', '', $product->image_url); // products/xxx.webp
+            if (Storage::disk('public')->exists($relativePath)) {
+                Storage::disk('public')->delete($relativePath);
             }
         }
 
         DB::table('products')->where('id', $id)->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product deleted',
+        // opsional: ikut nonaktifkan options agar rapi
+        DB::table('product_options')->where('product_id', (int) $id)->update([
+            'is_active' => 0,
+            'updated_at' => now(),
         ]);
+
+        return response()->json(['success' => true]);
     }
 }

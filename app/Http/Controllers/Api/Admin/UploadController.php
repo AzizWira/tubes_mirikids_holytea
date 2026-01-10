@@ -16,13 +16,13 @@ class UploadController extends Controller
 
         $file = $data['image'];
 
-        $ext = $file->getClientOriginalExtension();
-        $name = Str::uuid()->toString() . '.' . $ext;
+        // nama file unik
+        $name = Str::uuid()->toString() . '.' . $file->getClientOriginalExtension();
 
         // simpan ke storage/app/public/products
         $path = $file->storeAs('products', $name, 'public');
 
-        // url publik (butuh php artisan storage:link)
+        // url publik
         $url = '/storage/' . $path;
 
         return response()->json([

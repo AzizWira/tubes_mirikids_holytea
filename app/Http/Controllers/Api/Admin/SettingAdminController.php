@@ -8,44 +8,71 @@ use Illuminate\Support\Facades\DB;
 
 class SettingAdminController extends Controller
 {
+    // daftar key yang kita izinkan (biar aman)
+    private array $allowedKeys = [
+        'maps_url',
+        'maps_embed_url',
+        'address',
+        'open_days',
+        'open_hours',
+        'friday_hours',
+        'phone',
+        'email',
+        'instagram_url',
+    ];
+
     public function show()
     {
-        $row = DB::table('site_settings')->orderBy('id')->first();
+        $rows = DB::table('site_settings')
+            ->select(['key', 'value'])
+            ->whereIn('key', $this->allowedKeys)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r->key] = $r->value;
+        }
+
+        // pastikan semua key selalu ada (biar FE enak)
+        foreach ($this->allowedKeys as $k) {
+            if (!array_key_exists($k, $out))
+                $out[$k] = null;
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $row,
+            'data' => $out
         ]);
     }
 
     public function update(Request $request)
     {
         $data = $request->validate([
-            'site_title' => ['nullable', 'string', 'max:200'],
-            'whatsapp' => ['nullable', 'ensure_utf8', 'max:50'],
-            'instagram' => ['nullable', 'ensure_utf8', 'max:255'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'about' => ['nullable', 'string'],
+            'maps_url' => ['nullable', 'string', 'max:255'],
+            'maps_embed_url' => ['nullable', 'string'],
+            'address' => ['nullable', 'string'],
+            'open_days' => ['nullable', 'string', 'max:80'],
+            'open_hours' => ['nullable', 'string', 'max:80'],
+            'friday_hours' => ['nullable', 'string', 'max:80'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'string', 'max:100'],
+            'instagram_url' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $row = DB::table('site_settings')->orderBy('id')->first();
+        foreach ($this->allowedKeys as $key) {
+            if (!array_key_exists($key, $data))
+                continue;
 
-        if (!$row) {
-            $id = DB::table('site_settings')->insertGetId(array_merge($data, [
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]));
-            $row = DB::table('site_settings')->where('id', $id)->first();
-        } else {
-            DB::table('site_settings')->where('id', $row->id)->update(array_merge($data, [
-                'updated_at' => now(),
-            ]));
-            $row = DB::table('site_settings')->where('id', $row->id)->first();
+            DB::table('site_settings')->updateOrInsert(
+                ['key' => $key],
+                [
+                    'value' => $data[$key],
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $row,
-        ]);
+        return $this->show();
     }
 }

@@ -1,83 +1,140 @@
 @extends('admin.layout')
 
-@section('title', 'Settings')
+@section('title', 'Pengaturan')
+@section('page_title', 'Pengaturan')
 
 @section('content')
-<h3 class="mb-3">Settings</h3>
+    <div class="card shadow-sm">
+        <div class="card-body">
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div id="alertBox" class="alert alert-danger d-none"></div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="fw-semibold">Pengaturan Website</div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" id="btnReload">Reload</button>
+                    <button class="btn btn-primary btn-sm" id="btnSave">Simpan</button>
+                </div>
+            </div>
 
-        <div class="mb-3">
-            <label class="form-label">Site Title</label>
-            <input class="form-control" id="site_title">
+            <div id="alert" class="alert alert-danger d-none"></div>
+            <div id="ok" class="alert alert-success d-none">Berhasil disimpan.</div>
+
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">Google Maps URL</label>
+                    <input class="form-control" id="maps_url" placeholder="https://www.google.com/maps/place/...">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Instagram URL</label>
+                    <input class="form-control" id="instagram_url" placeholder="https://www.instagram.com/...">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Maps Embed URL</label>
+                    <textarea class="form-control" id="maps_embed_url" rows="2"
+                        placeholder="https://www.google.com/maps?q=...&output=embed"></textarea>
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Alamat</label>
+                    <textarea class="form-control" id="address" rows="2" placeholder="Alamat outlet..."></textarea>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Hari Buka</label>
+                    <input class="form-control" id="open_days" placeholder="Senin - Minggu">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Jam Buka</label>
+                    <input class="form-control" id="open_hours" placeholder="10am - 9pm">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Jam Jumat</label>
+                    <input class="form-control" id="friday_hours" placeholder="1pm - 9pm">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Telepon</label>
+                    <input class="form-control" id="phone" placeholder="+62...">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input class="form-control" id="email" placeholder="email@domain.com">
+                </div>
+
+            </div>
+
         </div>
-
-        <div class="mb-3">
-            <label class="form-label">WhatsApp</label>
-            <input class="form-control" id="whatsapp">
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Instagram</label>
-            <input class="form-control" id="instagram">
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Address</label>
-            <textarea class="form-control" id="address" rows="2"></textarea>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">About</label>
-            <textarea class="form-control" id="about" rows="3"></textarea>
-        </div>
-
-        <button class="btn btn-primary" id="btnSave">Simpan</button>
     </div>
-</div>
+@endsection
 
 @push('scripts')
-<script>
-const alertBox = document.getElementById('alertBox');
-function showError(msg){ alertBox.textContent = msg; alertBox.classList.remove('d-none'); }
-function hideError(){ alertBox.classList.add('d-none'); alertBox.textContent=''; }
+    <script>
+        function showErr(msg) {
+            const el = document.getElementById('alert');
+            el.textContent = msg;
+            el.classList.remove('d-none');
+            document.getElementById('ok').classList.add('d-none');
+        }
+        function clearErr() {
+            const el = document.getElementById('alert');
+            el.classList.add('d-none');
+            el.textContent = '';
+        }
+        function showOk() {
+            document.getElementById('ok').classList.remove('d-none');
+            document.getElementById('alert').classList.add('d-none');
+        }
 
-async function loadSettings() {
-    hideError();
-    try {
-        const res = await apiFetch('/api/admin/settings', { method: 'GET' });
-        const s = res.data || {};
-        document.getElementById('site_title').value = s.site_title || '';
-        document.getElementById('whatsapp').value = s.whatsapp || '';
-        document.getElementById('instagram').value = s.instagram || '';
-        document.getElementById('address').value = s.address || '';
-        document.getElementById('about').value = s.about || '';
-    } catch (e) {
-        showError(e.message);
-    }
-}
+        function fillForm(d) {
+            const keys = ['maps_url', 'maps_embed_url', 'address', 'open_days', 'open_hours', 'friday_hours', 'phone', 'email', 'instagram_url'];
+            keys.forEach(k => {
+                const el = document.getElementById(k);
+                if (el) el.value = d?.[k] ?? '';
+            });
+        }
 
-document.getElementById('btnSave').addEventListener('click', async () => {
-    hideError();
-    const payload = {
-        site_title: document.getElementById('site_title').value,
-        whatsapp: document.getElementById('whatsapp').value,
-        instagram: document.getElementById('instagram').value,
-        address: document.getElementById('address').value,
-        about: document.getElementById('about').value,
-    };
+        function collect() {
+            const keys = ['maps_url', 'maps_embed_url', 'address', 'open_days', 'open_hours', 'friday_hours', 'phone', 'email', 'instagram_url'];
+            const out = {};
+            keys.forEach(k => out[k] = document.getElementById(k).value.trim() || null);
+            return out;
+        }
 
-    try {
-        await apiFetch('/api/admin/settings', { method: 'PUT', body: JSON.stringify(payload) });
-        alert('Saved');
-    } catch (e) {
-        showError(e.message);
-    }
-});
+        async function loadSettings() {
+            await window.__adminUserPromise;
+            clearErr();
+            try {
+                const res = await apiFetch('/admin/settings');
+                fillForm(res.data || {});
+            } catch (e) {
+                showErr(e.message || 'Gagal memuat pengaturan');
+            }
+        }
 
-loadSettings();
-</script>
+        document.getElementById('btnReload').addEventListener('click', loadSettings);
+
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            await window.__adminUserPromise;
+            clearErr();
+
+            try {
+                const payload = collect();
+                const res = await apiFetch('/admin/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                fillForm(res.data || {});
+                showOk();
+            } catch (e) {
+                showErr(e.message || 'Gagal menyimpan pengaturan');
+            }
+        });
+
+        loadSettings();
+    </script>
 @endpush
-@endsection

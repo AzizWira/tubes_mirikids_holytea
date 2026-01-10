@@ -8,33 +8,31 @@
 
     {{-- Bootstrap CDN --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    {{-- Custom CSS --}}
-    <link rel="stylesheet" href="{{ asset('css/admin/login.css') }}">
 </head>
 
 <body class="bg-light">
 
     <div class="container py-5">
         <div class="row justify-content-center">
-            <div class="col-md-5 col-lg-4">
-                <div class="card shadow-sm border-0">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card shadow-sm">
                     <div class="card-body p-4">
-                        <h4 class="text-center mb-4 fw-bold">Login Admin</h4>
+                        <h4 class="mb-3">Login Admin</h4>
+                        <p class="text-muted mb-4">Masuk menggunakan akun admin1 / admin2.</p>
 
-                        <div id="alertBox" class="alert alert-danger d-none" role="alert"></div>
+                        <div id="alert" class="alert alert-danger d-none" role="alert"></div>
 
-                        <form id="loginForm">
-                            @csrf
-
+                        <form id="loginForm" autocomplete="off">
                             <div class="mb-3">
                                 <label class="form-label">Username</label>
-                                <input type="text" class="form-control" name="username" id="username" autocomplete="username" required>
+                                <input type="text" class="form-control" id="username" name="fake_username"
+                                    autocomplete="off" required>
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Password</label>
-                                <input type="password" class="form-control" name="password" id="password" autocomplete="current-password" required>
+                                <input type="password" class="form-control" id="password" name="fake_password"
+                                    autocomplete="new-password" required>
                             </div>
 
                             <button type="submit" class="btn btn-primary w-100" id="btnLogin">
@@ -42,67 +40,93 @@
                             </button>
                         </form>
 
-                        <p class="text-center text-muted mt-3 small mb-0">
-                            © {{ date('Y') }} HolyTea
-                        </p>
+                        <hr class="my-4">
+                        <div class="small text-muted">
+                            Default:
+                            <code>admin1/admin123</code> atau <code>admin2/admin123</code>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- JS --}}
     <script>
-        const form = document.getElementById('loginForm');
-        const alertBox = document.getElementById('alertBox');
-        const btn = document.getElementById('btnLogin');
+        const API_BASE = '/api';
+        const TOKEN_KEY = 'holytea_admin_token';
+        const USER_KEY = 'holytea_admin_user';
 
         function showError(msg) {
-            alertBox.textContent = msg;
-            alertBox.classList.remove('d-none');
+            const el = document.getElementById('alert');
+            el.textContent = msg;
+            el.classList.remove('d-none');
         }
 
         function hideError() {
-            alertBox.classList.add('d-none');
-            alertBox.textContent = '';
+            const el = document.getElementById('alert');
+            el.classList.add('d-none');
+            el.textContent = '';
         }
 
-        form.addEventListener('submit', async (e) => {
+        // Kalau sudah punya token, coba verifikasi -> langsung ke dashboard
+        (async function autoRedirectIfLoggedIn() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (!token) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    }
+                });
+
+                if (res.ok) {
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    // token invalid
+                    localStorage.removeItem(TOKEN_KEY);
+                    localStorage.removeItem(USER_KEY);
+                }
+            } catch (e) {
+                // kalau server down, biarkan user login manual
+            }
+        })();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             hideError();
 
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-
-            if (!username || !password) {
-                return showError('Username dan password wajib diisi.');
-            }
-
+            const btn = document.getElementById('btnLogin');
             btn.disabled = true;
             btn.textContent = 'Memproses...';
 
+            const payload = {
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value,
+            };
+
             try {
-                const res = await fetch('/api/auth/login', {
+                const res = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
                     },
-                    body: JSON.stringify({
-                        username,
-                        password
-                    })
+                    body: JSON.stringify(payload),
                 });
 
-                const json = await res.json();
+                const json = await res.json().catch(() => null);
 
                 if (!res.ok) {
-                    return showError(json?.message || 'Login gagal.');
+                    const msg = json?.message || 'Gagal login. Periksa username/password.';
+                    showError(msg);
+                    return;
                 }
 
-                // simpan token
-                localStorage.setItem('admin_token', json.data.token);
-                localStorage.setItem('admin_user', JSON.stringify(json.data.user));
+                // simpan token + user
+                localStorage.setItem(TOKEN_KEY, json.data.token);
+                localStorage.setItem(USER_KEY, JSON.stringify(json.data.user));
 
                 // redirect ke dashboard
                 window.location.href = '/admin/dashboard';

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -54,21 +55,41 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
-                'id' => $request->user()->id,
-                'username' => $request->user()->username,
-                'role' => $request->user()->role,
+                'id' => $user->id,
+                'username' => $user->username,
+                'role' => $user->role,
             ],
         ]);
     }
 
     public function logout(Request $request)
     {
-        // guard: kalau token tidak ada
-        if ($request->user() && $request->user()->currentAccessToken()) {
-            $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 401);
+        }
+
+        /** @var PersonalAccessToken|null $token */
+        $token = $user->currentAccessToken();
+
+        if ($token) {
+            $token->delete(); // logout device ini saja
         }
 
         return response()->json([
