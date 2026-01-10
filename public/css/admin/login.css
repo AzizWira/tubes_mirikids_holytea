@@ -1,19 +1,19 @@
-body {
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
-        sans-serif;
+.login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
 }
 
-.card {
-    border-radius: 14px;
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 18px;
 }
 
-.btn-primary {
-    border-radius: 10px;
-    padding: 10px;
-    font-weight: 600;
-}
-
-.form-control {
-    border-radius: 10px;
-    padding: 10px;
+.login-logo {
+    width: 90px;
+    height: auto;
+    display: inline-block;
 }
