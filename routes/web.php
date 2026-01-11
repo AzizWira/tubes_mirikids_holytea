@@ -40,6 +40,7 @@ Route::prefix('admin')->group(function () {
     // Admin1 pages (proteksi via JS guard di admin.layout)
     Route::view('/products', 'admin.products.index')->name('admin.products.index');
     Route::view('/categories', 'admin.categories.index')->name('admin.categories.index');
+    Route::view('/news-banners', 'admin.news-banners.index')->name('admin.news-banners.index');
 
     // Admin2 pages (proteksi via JS guard di admin.layout)
     Route::view('/testimonials', 'admin.testimonials.index')->name('admin.testimonials.index');

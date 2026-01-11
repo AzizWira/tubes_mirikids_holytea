@@ -33,4 +33,20 @@ class UploadController extends Controller
             ],
         ], 201);
     }
+
+    public function newsBannerImage(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'image', 'max:2048'], // maks 2MB
+        ]);
+
+        $file = $request->file('file');
+        $name = 'news_' . Str::random(12) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('news-banners', $name, 'public');
+
+        return response()->json([
+            'url' => asset('storage/' . $path),
+            'path' => $path,
+        ], 201);
+    }
 }

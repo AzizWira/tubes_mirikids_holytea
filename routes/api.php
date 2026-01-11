@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Admin\CategoryAdminController;
 use App\Http\Controllers\Api\Admin\TestimonialAdminController;
 use App\Http\Controllers\Api\Admin\SettingAdminController;
 use App\Http\Controllers\Api\Admin\UploadController;
+use App\Http\Controllers\Api\Admin\NewsBannerAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,8 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::prefix('admin')->middleware('role:admin1')->group(function () {
         Route::post('/upload/product-image', [UploadController::class, 'productImage']);
+        Route::post('/upload/news-banner-image', [UploadController::class, 'newsBannerImage']); // NEW
         Route::apiResource('products', ProductAdminController::class);
         Route::apiResource('categories', CategoryAdminController::class);
+        Route::apiResource('news-banners', NewsBannerAdminController::class);
     });
 
     /*
