@@ -69,7 +69,7 @@
         const TOKEN_KEY = 'holytea_admin_token';
         const USER_KEY = 'holytea_admin_user';
 
-        const ADMIN1_PAGES = ['/admin/products', '/admin/categories'];
+        const ADMIN1_PAGES = ['/admin/products', '/admin/categories', '/admin/news-banners'];
         const ADMIN2_PAGES = ['/admin/testimonials', '/admin/settings'];
 
         function setAlert(msg) {
@@ -132,6 +132,7 @@
                         ${item('/admin/dashboard', 'Dashboard')}
                         ${item('/admin/products', 'Produk')}
                         ${item('/admin/categories', 'Kategori')}
+                        ${item('/admin/news-banners', 'News Banner')}
                     </div>
                 `;
             } else if (role === 'admin2') {
