@@ -256,7 +256,7 @@ body {
     justify-content: space-between;
     align-items: center;
     height: 100px;
-    max-width: 1850px;
+    width: 100%;
     margin: 0 auto;
     background-color: #eee;
     padding: 10px 70px;
@@ -419,6 +419,9 @@ body {
     width: 100%;
     border: 1px solid #c9c9c9;
     border-radius: 10px;
+    display: block;
+    aspect-ratio: 16/9;
+    object-fit:fill;
 }
 
 .slick-slider {
@@ -523,12 +526,16 @@ body {
 .img-left1 {
     width: 100%;
     height: auto;
+    display: block;
+    border-radius: 20px;
 }
 
 .img-best {
     width: 100%;
+    display: block;
     height: auto;
     cursor: pointer;
+    border-radius: 20px;
 }
 
 @media only screen and (max-width: 600px) {

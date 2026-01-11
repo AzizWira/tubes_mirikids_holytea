@@ -28,12 +28,8 @@
   {{-- SPONSOR / NEWS --}}
   <div class="body">
     <div class="news" id="sponsor">
-      <section class="customer-logos slider">
-        {{-- kalau mau dinamis: bisa render dari $news / API --}}
-        <div class="slide"><img src="/assets/sponsor/poster-rasabaru-lemonade.jpg" alt="poster" /></div>
-        <div class="slide"><img src="/assets/sponsor/poster-order.jpg" alt="poster" /></div>
-        <div class="slide"><img src="/assets/sponsor/poster-rasabaru-blackforest.jpg" alt="poster" /></div>
-        <div class="slide"><img src="/assets/sponsor/outlet baru.jpg" alt="poster" /></div>
+      <section class="customer-logoss slider" id="news-slider">
+        {{-- diisi via JS --}}
       </section>
     </div>
   </div>

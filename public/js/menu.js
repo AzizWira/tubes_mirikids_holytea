@@ -1,8 +1,82 @@
+function escapeHtml(str) {
+    return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function renderNews(items) {
+    const el = document.getElementById("news-slider");
+    if (!el) return;
+
+    el.innerHTML = "";
+
+    if (!items.length) {
+        el.innerHTML = `
+      <div class="slide">
+        <img src="/assets/sponsor/poster-order.jpg" alt="poster">
+      </div>
+    `;
+        return;
+    }
+
+    items.forEach((n) => {
+        el.innerHTML += `
+      <div class="slide">
+        <img src="${n.image_url}" alt="${escapeHtml(n.title || "news")}">
+      </div>
+    `;
+    });
+}
+
+function initSlickNews() {
+    // slick butuh jquery
+    if (
+        typeof window.$ === "undefined" ||
+        !document.querySelector(".customer-logoss")
+    )
+        return;
+
+    $(".customer-logoss").slick({
+        slidesToShow: 2,
+        slidesToScroll: 1,
+        autoplay: true,
+        autoplaySpeed: 4000,
+        arrows: false,
+        dots: false,
+        pauseOnHover: false,
+        responsive: [
+            {
+                breakpoint: 600,
+                settings: { slidesToShow: 1, slidesToScroll: 1 },
+            },
+        ],
+    });
+}
+
+async function loadMenuPageData() {
+    try {
+        const res = await fetch("/api/home");
+        const json = await res.json();
+        if (!json.success) return;
+
+        const data = json.data;
+
+        // render news slider
+        renderNews(data.news || []);
+        initSlickNews();
+    } catch (e) {
+        console.error("Gagal fetch /api/home untuk news:", e);
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     // initScrollIndicator();
     // initRevealOnScroll();
     initInstructionPopup();
-    // loadHomeData();
+    loadMenuPageData();
 });
 
 function initInstructionPopup() {
