@@ -126,8 +126,7 @@
         {{-- LOCATION --}}
         <div class="location">
             <div class="map-responsive">
-                <iframe id="maps-embed" src="" width="600" height="450" frameborder="0" style="border: 0" allowfullscreen=""
-                    aria-hidden="false" tabindex="0"></iframe>
+                <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d95665.00137561953!2d110.83952780275871!3d-6.79690481391049!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e70db9ba6a1c967%3A0x73e6531a7ab4d729!2sHoly%20Tea%20Indonesia%20-%20Besito!5e0!3m2!1sen!2sid!4v1768184272326!5m2!1sen!2sid" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
 
             <div class="con-maps">

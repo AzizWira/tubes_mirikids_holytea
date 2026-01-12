@@ -84,7 +84,7 @@
     <footer>
         <div class="footer-text">
             <img src="{{ asset('assets/logo-holytea.png') }}" alt="logo" />
-            <p>Copyright © 2025 Kelompok 7</p>
+            <p>Copyright © 2025 Kelompok MiriKids</p>
         </div>
     </footer>
 
